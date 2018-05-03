@@ -5,14 +5,10 @@ import android.animation.ObjectAnimator;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -57,9 +53,33 @@ public class MainActivity extends AppCompatActivity {
     public boolean onTouchEvent(MotionEvent motionEvent) {
         switch (motionEvent.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                //记录触摸时的坐标,这里为什么要用getRawX()和getRawY()相信理解getX(),getY()和getRawX(),getRawY()的区别就知道为什么了
+                //记录触摸时的坐标了
                 lastX = motionEvent.getRawX();
                 lastY = motionEvent.getRawY();
+                float downX = motionEvent.getRawX();
+                float downY = motionEvent.getRawY() - rv1.getY();
+                //寻找按下的题目答案item
+                View selectItemView = rv1.findChildViewUnder(downX, downY);
+                if (selectItemView == null) {
+                    selectItemView = rv1.findChildViewUnder(downX + textView.getWidth(), downY);
+                }
+                if (selectItemView == null) {
+                    selectItemView = rv1.findChildViewUnder(downX, downY + textView.getHeight());
+                }
+                if (selectItemView == null) {
+                    selectItemView = rv1.findChildViewUnder(downX + textView.getWidth(), downY + textView.getHeight());
+                }
+                if (selectItemView != null) {
+                    Button button = (Button) selectItemView.findViewById(R.id.tv_answer);
+                    ObjectAnimator mObjectAnimatorX = ObjectAnimator.ofFloat(textView, "x", textView.getX(), downX);
+                    ObjectAnimator mObjectAnimatorY = ObjectAnimator.ofFloat(textView, "y", textView.getY(), downY);
+                    AnimatorSet mAnimatorSet = new AnimatorSet();
+                    mAnimatorSet.playTogether(mObjectAnimatorX, mObjectAnimatorY);
+                    mAnimatorSet.setDuration(0);
+                    mAnimatorSet.start();
+                    textView.setText("我在这儿" + button.getText());
+                    textView.setVisibility(View.VISIBLE);
+                }
                 //return true对事件进行拦截,不继续下发,防止继续响应onClick事件.
                 return true;
             case MotionEvent.ACTION_MOVE:
@@ -82,13 +102,7 @@ public class MainActivity extends AppCompatActivity {
                 //防止移出容器底边
 //                if (nextY > containerHeight - getHeight())
 //                    nextY = containerHeight - getHeight();
-                //利用属性动画改变控件的x,y坐标
-
-//                Animation translateAnimation = new TranslateAnimation(getX(), nextX, getY(), nextY);
-//                translateAnimation.setDuration(0);
-//                 固定属性的设置都是在其属性前加“set”，如setDuration（）
-//                startAnimation(translateAnimation);
-
+                //通过属性动画移动TextView
                 ObjectAnimator mObjectAnimatorX = ObjectAnimator.ofFloat(textView, "x", textView.getX(), nextX);
                 ObjectAnimator mObjectAnimatorY = ObjectAnimator.ofFloat(textView, "y", textView.getY(), nextY);
                 AnimatorSet mAnimatorSet = new AnimatorSet();
@@ -98,13 +112,30 @@ public class MainActivity extends AppCompatActivity {
                 //移动完之后记录当前坐标
                 lastX = motionEvent.getRawX();
                 lastY = motionEvent.getRawY();
-                System.out.println("=========getLeft" + textView.getLeft() + ",getTop" + textView.getTop());
-                System.out.println("========X" + textView.getX() + ",Y" + textView.getY());
-                System.out.println("=========getTranslationX" + textView.getTranslationX() + ",getTranslationY" + textView.getTranslationY());
                 break;
             case MotionEvent.ACTION_UP:
-                Button button = (Button) rv2.findChildViewUnder(lastX, lastY).findViewById(R.id.tv_answer);
-                button.setText("我是小兵");
+                //textview必须在显示的时候才会给问题RV的item设置答案
+                if (textView.getVisibility() == View.VISIBLE) {
+                    float x = textView.getX();
+                    float y = textView.getY() - rv2.getY();
+                    View itemView = rv2.findChildViewUnder(x, y);
+                    //寻找手指按起时所在的问题RV的item
+                    if (itemView == null) {
+                        itemView = rv2.findChildViewUnder(x + textView.getWidth(), y);
+                    }
+                    if (itemView == null) {
+                        itemView = rv2.findChildViewUnder(x, y + textView.getHeight());
+                    }
+                    if (itemView == null) {
+                        itemView = rv2.findChildViewUnder(x + textView.getWidth(), y + textView.getHeight());
+                    }
+                    if (itemView != null) {
+                        Button button = (Button) itemView.findViewById(R.id.tv_answer);
+                        button.setText(textView.getText());
+                    }
+                    //TextView销毁掉
+                    textView.setVisibility(View.INVISIBLE);
+                }
                 break;
         }
         return false;
